@@ -1,0 +1,22 @@
+from urllib.request import Request, urlopen
+import requests
+import json
+urlList = 'https://devcorrpublicdatahub.blob.core.usgovcloudapi.net/blocked-ip-addresses/blockedipsources.json'
+urlRequests = requests.get(url=urlList)
+data = urlRequests.json()
+urls = []
+for item in data:
+    urls.append(item['Source URL'])
+ipaddresses = []
+for url in urls:
+    # Added User Agent to prevent spider/bot blocking
+    for line in urlopen(Request(url, headers={'User-Agent': 'Mozilla/5.0'})):
+        # check that it's a string and not a duplicate
+        if line.decode('utf-8').find('#') == -1 or not line.decode('utf-8') and line.decode('utf-8') not in ipaddresses:
+            ipaddresses.append(line.decode('utf-8'))
+with open("output.txt", "w") as txt_file:
+    for address in ipaddresses:
+        txt_file.write(''.join(address))
+        
+        
+        
