@@ -1,1 +1,90 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "resources": [
+    {
+      "type": "Microsoft.Web/sites",
+      "apiVersion": "2018-11-01",
+      "name": "[parameters('functionAppName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp",
+      "properties": {
+        "siteConfig": {
+          "appSettings": [
+            {
+              "name": "FUNCTIONS_WORKER_RUNTIME",
+              "value": "powershell"
+            },
+            {
+              "name": "VIRUSTOTAL_API_KEY",
+              "value": "[parameters('virusTotalApiKey')]"
+            },
+            {
+              "name": "AZURE_SUBSCRIPTION_ID",
+              "value": "[parameters('azureSubscriptionId')]"
+            }
+          ]
+        }
+      },
+      "resources": [
+        {
+          "type": "functions",
+          "apiVersion": "2018-11-01",
+          "name": "[parameters('functionName')]",
+          "dependsOn": [
+            "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
+          ],
+          "properties": {
+            "scriptFile": "[parameters('scriptFile')]",
+            "entryPoint": "[parameters('entryPoint')]"
+          }
+        }
+      ]
+    }
+  ],
+  "parameters": {
+    "functionAppName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the function app."
+      }
+    },
+    "functionName": {
+      "type": "string",
+      "metadata": {
+        "description": "The name of the function."
+      }
+    },
+    "location": {
+      "type": "string",
+      "metadata": {
+        "description": "The Azure region where the resources will be deployed."
+      }
+    },
+    "virusTotalApiKey": {
+      "type": "string",
+      "metadata": {
+        "description": "The API key for VirusTotal."
+      }
+    },
+    "azureSubscriptionId": {
+      "type": "string",
+      "metadata": {
+        "description": "The subscription ID for Azure."
+      }
+    },
+    "scriptFile": {
+      "type": "string",
+      "metadata": {
+        "description": "The path to the script file."
+      }
+    },
+    "entryPoint": {
+      "type": "string",
+      "metadata": {
+        "description": "The entry point for the function."
+      }
+    }
+  }
+}
 
