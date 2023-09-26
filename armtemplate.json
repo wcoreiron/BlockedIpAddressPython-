@@ -35,8 +35,36 @@
             "[resourceId('Microsoft.Web/sites', parameters('functionAppName'))]"
           ],
           "properties": {
-            "scriptFile": "[parameters('scriptFile')]",
-            "entryPoint": "[parameters('entryPoint')]"
+            "config": {
+              "bindings": [
+                {
+                  "authLevel": "function",
+                  "type": "httpTrigger",
+                  "direction": "in",
+                  "name": "req",
+                  "methods": [
+                    "get",
+                    "post"
+                  ]
+                },
+                {
+                  "type": "http",
+                  "direction": "out",
+                  "name": "res"
+                }
+              ],
+              "script": "
+                using namespace System.Net
+                param($Request, $TriggerMetadata)
+                # ... [Your PowerShell Script Here] ...
+                $Response = @{
+                    StatusCode = [HttpStatusCode]::OK
+                    ContentType = 'application/json'
+                    Body = $body | ConvertTo-Json
+                }
+                $Response
+              "
+            }
           }
         }
       ]
@@ -72,19 +100,8 @@
       "metadata": {
         "description": "The subscription ID for Azure."
       }
-    },
-    "scriptFile": {
-      "type": "string",
-      "metadata": {
-        "description": "The path to the script file."
-      }
-    },
-    "entryPoint": {
-      "type": "string",
-      "metadata": {
-        "description": "The entry point for the function."
-      }
     }
   }
 }
+
 
