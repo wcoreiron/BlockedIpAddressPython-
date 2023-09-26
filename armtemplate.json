@@ -53,16 +53,74 @@
                   "name": "res"
                 }
               ],
-              "script": "
-                using namespace System.Net
-                param($Request, $TriggerMetadata)
-                # ... [Your PowerShell Script Here] ...
-                $Response = @{
-                    StatusCode = [HttpStatusCode]::OK
-                    ContentType = 'application/json'
-                    Body = $body | ConvertTo-Json
-                }
-                $Response
+              "script": "using namespace System.Net
+
+param($Request, $TriggerMetadata)
+
+# API Key for VirusTotal
+$VirusTotalApiKey = $env:VIRUSTOTAL_API_KEY
+# Azure Subscription ID
+$SubscriptionId = $env:AZURE_SUBSCRIPTION_ID
+# Azure Resource Group Name
+$ResourceGroupName = 'sandbox'
+# Azure Network Security Group Name
+$NSGName = 'williamtest3NSG'
+
+# Extract IP from the request
+$RequestBody = $Request | ConvertFrom-Json
+$ip = $RequestBody.ip
+
+# Get IP Details from VirusTotal
+$VTUrl = "https://www.virustotal.com/api/v3/ip_addresses/$ip"
+$headers = @{
+    'x-apikey' = $VirusTotalApiKey
+}
+$response = Invoke-RestMethod -Uri $VTUrl -Headers $headers -Method Get
+$country = $response.data.attributes.country
+$ipRange = $response.data.attributes.network
+
+if ($country -ne 'USA') {
+    # Connect to Azure Account
+    Connect-AzAccount -Identity
+    
+    # Get NSG
+    $nsg = Get-AzNetworkSecurityGroup -ResourceGroupName $ResourceGroupName -Name $NSGName
+    
+    # Check if IP Range is already in NSG
+    $exists = $false
+    foreach ($rule in $nsg.SecurityRules) {
+        if ($rule.DestinationAddressPrefix -eq $ipRange) {
+            $exists = $true
+            break
+        }
+    }
+    
+    if (-not $exists) {
+        # Find an available priority
+        $priorities = 100..4096 | Where-Object { $_ -notin $nsg.SecurityRules.Priority }
+        $priority = $priorities | Select-Object -First 1
+        
+        # Add IP Range to NSG
+        $ruleName = "ip-blocklist" + (Get-Random)
+        $newRule = New-AzNetworkSecurityRuleConfig -Name $ruleName -Description "Block $ipRange" -Access Deny -Protocol * -Direction Inbound -Priority $priority -SourceAddressPrefix * -SourcePortRange * -DestinationAddressPrefix $ipRange -DestinationPortRange *
+        $nsg.SecurityRules.Add($newRule)
+        Set-AzNetworkSecurityGroup -NetworkSecurityGroup $nsg
+    }
+}
+
+# Return response
+$body = @{
+    ipRange = $ipRange
+    country = $country
+    blocked = (-not $exists)
+}
+$Response = @{
+    StatusCode = [HttpStatusCode]::OK
+    ContentType = 'application/json'
+    Body = $body | ConvertTo-Json
+}
+$Response
+
               "
             }
           }
